@@ -50,6 +50,9 @@ Medusa の使用しているアルゴリズムの基礎。
 
 # メソッド
 
+<img src="images/tri_factorization.jpg">
+
+---
 目的: あらかじめ設定したpivot objectと優位に関連するsize-kのモジュールを作成する。
 
 data fusion graph G=(V,R,T)
