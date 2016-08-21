@@ -2,13 +2,25 @@
 
 ## by Marina Zitnik Blaz Zupan
 
+### 2016 ISMB論文読み会
+
 <font color="red"> 発表者 国立癌センター 宮本 丈 </font>
+
+---
+
+# 3行で
+
+* 多様なソースからのデータを組み合わせて自分に興味のある情報を抽出する手法
+* 理論的な厳密さよりも、有用性を強調
+* 邪悪さが一切ない(データ弱者のための手法)
+
+※ ソフトウェア名は[Medusa](https://github.com/marinkaz/medusa)
 
 ---
 
 # motivation
 
-特定の形質`A`と優位に相関する遺伝子`B`を見つけたい.
+1. 特定の形質`A`と優位に相関する遺伝子`B`を見つけたい.
 
 ↓ 一般化
 
@@ -27,6 +39,7 @@
 * PUBMED
 * GEO
 * PUBCHEM
+
 etc ...
 
 ---
@@ -34,9 +47,9 @@ etc ...
 # How ?
 ## 質、量ともにカオスに
 
-<img src="images/chaos.jpg", "height=360", "width=500">
+<img src="images/chaos.jpg", height="360", width="400">
 
-→ 頑張ってすっきりさせるよ！
+→ まずはすっきりさせるところから
 
 ---
 
@@ -105,6 +118,8 @@ etc ...
 <img src="images/matrix_matrix.jpg", width="300", height="300">
 <img src="images/relational_matrix.jpg", width="400", height="250">
 
+ここで、同じ型同士の行列(図の対角成分`\(\Theta \in T\)`)はクラスタリングの際の正則条件として用いる(後述)
+
 ---
 
 # 2. 関連付ける
@@ -143,15 +158,15 @@ etc ...
 
 `$$ \sum_{R{ij} \in R} {|| R_{ij} - G_iS_{ij}G_j^{T} ||^2} + \sum_{\Theta \in T^l}{tr((G^l)^T\Theta^lG^l)} $$`
 
-を最小化するような`\(G_i, G_j,S_{ij}\)`を選ぶ。-> 制限付き固有値分解による低ランク近似
+を最小化するような`\(G_i, G_j,S_{ij}\)`を選ぶ。-> **制限付き固有値分解**による低ランク近似
 
 
-semi-surpervised clusteringの一種。「同じ型のオブジェクト同士で、かつ相関のあるオブジェクトは、おそらく同じクラスタに入るはずだ」という事前知識を用いる。
+semi-supervised clusteringの一種。「同じ型のオブジェクト同士で、かつ相関のあるオブジェクトは、おそらく同じクラスタに入るはずだ」という事前知識を用いる。
 
 
-例: SNS上でつながっている人物どうしならば、同じ映画を選好するクラスタに入りやすいはずだ。
+例: SNS上でつながリの深い人物どうしならば、同じ映画を選好するクラスタに入りやすいはずだ。
 
-選ぶデータによって結果が変わる可能性があるので注意！
+クラスタ数は自動推定できないようになっているが、これがちょっと扱いを難しくしている印象
 
 ---
 
@@ -165,13 +180,49 @@ semi-surpervised clusteringの一種。「同じ型のオブジェクト同士�
 ---
 
 # collective matrix factorization
-#### 全体に対して適用(先ほどの数式)
+#### ラグランジュ乗数法によってG,Sを求める
+
 
 <img src="images/tri_factorization_all.jpg", width="600", height="400">
 
 ---
 
 # collective matrix factorization
+### 解き方
+
+分解後のそれぞれの行列のランクkをあらかじめあたえておく。`\(k_1, k_2 ... k_r\)`
+
+先ほどの数式(最小化したい目標関数)を`\(J = (G;S)\)`とし、
+
+未定乗数`\(\lambda\)`を導入し、ラグランジュ関数`\(L = J(G;S) - \sum^r_{i=1}tr(\lambda_iG^T_i)\)`を定義する。適当な初期値から
+
+1. `\(G_1 ... G_r\)`　を固定して`\(\partial f / \partial S_{ij} = 0\)`を解き、`\(S\)`を求める.
+
+2． `\(S\)`を固定して`\(\partial f / \partial G_i = 0\)`をそれぞれのiについて求める。(ただし、iは[1 ... r])
+
+を適当な閾値以下になるまで繰り返す。
+
+---
+# collective matrix factorizaton
+
+#### 問題点
+
+分解後の行列のランクk(= クラスタ数)をどう決める?
+
+ここでは`\(k = k_1, ... k_r \)`の全てについて上限と下限を設定し、
+
+1. 前頁のアルゴリズムで分解を実行
+2. cophenetic correlation coefficient `\(\rho\)` を計算し、モデルのバリアンスを評価
+3. 2分探索で適切なkを一つずつ決める。
+
+あまり洗練されていない印象。改良の余地あり?
+
+
+---
+
+
+## 分解後
+
 #### 行列をチェインさせて任意の2種類のデータの関係を見る
 
 <img src="images/matrix_chain.jpg", width="580", height="410">
@@ -180,27 +231,48 @@ semi-surpervised clusteringの一種。「同じ型のオブジェクト同士�
 
 ---
 
-# ここまで先行研究
+# 全体の流れ
 
-問題点 ...  2頂点間に複数のチェインがあった場合、それらを統合して考えるのはナンセンス。
+1. 全部行列に直す(前処理)
+2. 関連付ける
+3. collective matrix factorization(ここまで先行研究)
+4. <font color="red">Medusa</font>
 
-↓
 
-なぜならばそれらはそれぞれ違った基準での距離を表しているため
+---
 
-↓
+ここまでの問題点 ...  チェインを長くするとノイズが増す
 
-統合できたら検出力上がってうれしいよね？
+↓ どのようにして補正する？
+
+複数のチェインを統合して検出力を上げる
+
+↓ 問題は
+
+2頂点間に複数のチェインがあった場合、それらを統合して考えるのはナンセンス。
+
+↓ なぜかというと
+
+それぞれのチェインはそれぞれ違った基準での距離を表しているため
+
+↓ 解決策
+
+Pivot Object(ポジコン)を用いて、似ているオブジェクトの組を見つける
+
+> つまり ... 病気Aと関連があるとわかっている遺伝子`\(b_1, b_2, ... b_n\)`
+
+> から新たな関連遺伝子群`\(b_{n+1}... b_{m}\)`を検出する。
 
 
 ---
 
 # Medusa
 
-
+1. `\(b_1, ..., b_n\)`と、`\(a_1, ... ,a_n\)`
 
 ---
-# 同じ型のオブジェクトどうしでもできる
+
+# 違う型のオブジェクトどうしでもできる
 
 例: 病気Aと関連のある遺伝子群を持っていて、それに似た遺伝子群をひっぱってきたい
 
@@ -210,7 +282,7 @@ semi-surpervised clusteringの一種。「同じ型のオブジェクト同士�
 
 ---
 
-# ポジコンで検証 -> つよい
+# ポジコンで検証 -> 検出力向上
 
 <img src="images/posicon.jpg", width="600", height="460">
 
@@ -223,14 +295,12 @@ semi-surpervised clusteringの一種。「同じ型のオブジェクト同士�
 * <font size="8">関数型言語みたいで美しいから</font>
 * <font size="8">今までの集大成感があるから</font>
 
----
-# 感想
 
 ---
 
 # refs
 
-ref: http://helikoid.si/A8BFDCC6-8297-40AE-A9B4-59AA6983BF33/FinalDownload/DownloadId-FD86820B5866BD37D790F1FF903773BF/A8BFDCC6-8297-40AE-A9B4-59AA6983BF33/bc215/bc2-handouts.pdf
+http://helikoid.si/A8BFDCC6-8297-40AE-A9B4-59AA6983BF33/FinalDownload/DownloadId-FD86820B5866BD37D790F1FF903773BF/A8BFDCC6-8297-40AE-A9B4-59AA6983BF33/bc215/bc2-handouts.pdf
 
 http://eprints.fri.uni-lj.si/2862/1/2014-ZitnikZupan-IEEE-TPAMI.pdf
--->
+
