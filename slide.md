@@ -2,117 +2,305 @@
 
 ## by Marina Zitnik Blaz Zupan
 
-発表者 国立癌センター 宮本 丈
+### 2016 ISMB論文読み会
+
+<font color="red"> 発表者 国立癌センター 宮本 丈 </font>
 
 ---
 
-## subtitle
+# 3行で
 
-hogehoge
+* 多様なソースからのデータを組み合わせて自分に興味のある情報を抽出する手法
+* 理論的な厳密さよりも、有用性を強調
+* 邪悪さが一切ない(データ弱者のための手法)
+
+※ ソフトウェア名は[Medusa](https://github.com/marinkaz/medusa)
+
+---
+
+# motivation
+
+1. 特定の形質`A`と優位に相関する遺伝子`B`を見つけたい.
+
+↓ 一般化
+
+特定の型`<A>`のインスタンス`\(a_1, a_2, ... a_n\)`と優位に相関する
+
+型`<B>`のインスタンス`\(b_1, b_2, ... b_n\)`を見つけたい
+
+---
+
+# How ?
+## 様々なソースからのデータ群を組み合わせる。
+
+* GO
+* KEGG
+* MESH
+* PUBMED
+* GEO
+* PUBCHEM
+
+etc ...
+
+---
+
+# How ?
+## 質、量ともにカオスに
+
+<img src="images/chaos.jpg", height="360", width="400">
+
+→ まずはすっきりさせるところから
+
+---
+
+# 全体の流れ
+
+1. 全部行列に直す(前処理)
+2. 関連付ける
+3. collective matrix factorization(ここまで先行研究)
+4. Medusa
+
+---
+
+# 全体の流れ
+
+1. <font color="red">全部行列に直す(前処理)</font>
+2. 関連付ける
+3. collective matrix factorization(ここまで先行研究)
+4. Medusa
+
+---
+
+# 1. 行列に直す
+
+### グラフデータ
+<img src="images/interaction_graph.jpg">
+
+---
+
+# 1. 行列に直す
+
+### xml
+
+<img src="images/mesh_to_matrix.jpg">
+
+---
+
+# 1. 行列に直す
+
+### GO
+
+<img src="images/GO_to_matrix.jpg">
+
+---
+
+# 全体の流れ
+
+1. 全部行列に直す(前処理)
+2. <font color="red">関連付ける</font>
+3. collective matrix factorization(ここまで先行研究)
+4. Medusa
+
+---
+
+# 2. 関連付ける
+
+間接的なデータしかなくとも情報を用いることができる。
+
+<img src="images/relation.jpg">
+
+---
+
+# 2. 関連付ける
+
+行列の行列として表現できる。
+
+<img src="images/matrix_matrix.jpg", width="300", height="300">
+<img src="images/relational_matrix.jpg", width="400", height="250">
+
+ここで、同じ型同士の行列(図の対角成分`\(\Theta \in T\)`)はクラスタリングの際の正則条件として用いる(後述)
+
+---
+
+# 2. 関連付ける
+
+同じもののグラフ表現
+
+<img src="images/graph.jpg", width="540", height="380">
+
+---
+
+# 2. 関連付ける
+
+グラフを`\(G\)`とすると
+
+`\(G = (V, R, T)\)`、ただし
+
+* `\(V\)`は頂点(型)
+* `\(R\)`は辺(Relation matrix)
+* `\(T\)`は同じ型のオブジェクト間の行列(制限行列) `\(\Theta \in T\)`
+
+
+<img src="images/graph2.jpg", width="440", height="300">
+
+---
+
+# 全体の流れ
+
+1. 全部行列に直す(前処理)
+2. 関連付ける
+3. <font color="red">collective matrix factorization(ここまで先行研究)</font>
+4. Medusa
+
+---
+
+# collective matrix factorization
+
+`$$ \sum_{R{ij} \in R} {|| R_{ij} - G_iS_{ij}G_j^{T} ||^2} + \sum_{\Theta \in T^l}{tr((G^l)^T\Theta^lG^l)} $$`
+
+を最小化するような`\(G_i, G_j,S_{ij}\)`を選ぶ。-> **制限付き固有値分解**による低ランク近似
+
+
+semi-supervised clusteringの一種。「同じ型のオブジェクト同士で、かつ相関のあるオブジェクトは、おそらく同じクラスタに入るはずだ」という事前知識を用いる。
+
+
+例: SNS上でつながリの深い人物どうしならば、同じ映画を選好するクラスタに入りやすいはずだ。
+
+クラスタ数は自動推定できないようになっているが、これがちょっと扱いを難しくしている印象
+
+---
+
+# matrix tri-factorization
+#### 潜在空間にマッピング(クラスタリング)
+
+`\(R\)`→`\(GSG^T\)`
+
+<img src="images/tri_factorization.jpg", width="400", height="400">
+
+---
+
+# collective matrix factorization
+#### ラグランジュ乗数法によってG,Sを求める
+
+
+<img src="images/tri_factorization_all.jpg", width="600", height="400">
+
+---
+
+# collective matrix factorization
+### 解き方
+
+分解後のそれぞれの行列のランクkをあらかじめあたえておく。`\(k_1, k_2 ... k_r\)`
+
+先ほどの数式(最小化したい目標関数)を`\(J = (G;S)\)`とし、
+
+未定乗数`\(\lambda\)`を導入し、ラグランジュ関数`\(L = J(G;S) - \sum^r_{i=1}tr(\lambda_iG^T_i)\)`を定義する。適当な初期値から
+
+1. `\(G_1 ... G_r\)`　を固定して`\(\partial f / \partial S_{ij} = 0\)`を解き、`\(S\)`を求める.
+
+2． `\(S\)`を固定して`\(\partial f / \partial G_i = 0\)`をそれぞれのiについて求める。(ただし、iは[1 ... r])
+
+を適当な閾値以下になるまで繰り返す。
+
+---
+# collective matrix factorizaton
+
+#### 問題点
+
+分解後の行列のランクk(= クラスタ数)をどう決める?
+
+ここでは`\(k = k_1, ... k_r \)`の全てについて上限と下限を設定し、
+
+1. 前頁のアルゴリズムで分解を実行
+2. cophenetic correlation coefficient `\(\rho\)` を計算し、モデルのバリアンスを評価
+3. 2分探索で適切なkを一つずつ決める。
+
+あまり洗練されていない印象。改良の余地あり?
 
 
 ---
 
-# 先行研究
 
-## 同著者によるもの
+## 分解後
 
-* Data fusion by Matrix factorization. Zitnik,M Zupan,B, 2015
-Medusa の使用しているアルゴリズムの基礎。
-* Gene Prioritization by Compressive Data Fusion and Chaining
-* Discovering disease-disease associations by fusing systems-level molecular data
+#### 行列をチェインさせて任意の2種類のデータの関係を見る
 
-* Fusjishage 2005 Submodule functions and optimization.
-教科書
+<img src="images/matrix_chain.jpg", width="580", height="410">
+
+オブジェクトどうしの、本来ならば自明でない関係性が見れてハッピー！
 
 ---
 
-# 関連研究
+# 全体の流れ
 
-大きく2つの流派がある
-
-1. meta-path-based アプローチ ... Heterogeneous Network Edge Prediction: A Data Integration Approach to Prioritize Disease-Associated Genesなど
-2. latent-chain-based approach ... この著者
-
-
-様々な種類のデータセットからgroup wise disease-assosiationを抜き出す研究には色々ある。
-
-* A DIseAse MOdule Detection(DIAMOnD) ... network propagation and random walk analysis でdisease gene とタンパク質複合体都の関係を予想
-* guilty by association methods ... RIDDLE など。cofunction network から機能未知の遺伝子の機能予測
-
----
-
-# 先行研究との違い
-
-先行研究は皆この著者自身のものも含めて、「異なった、場合によっては距離のあるsemanticsを考慮に入れた、遺伝子・病気関連解析」ではない。また、ユーザーが遺伝子、病気の関係を選択結合することがデキるものもない
-
----
-
-# メソッド
-
-<img src="images/tri_factorization.jpg">
-
----
-目的: あらかじめ設定したpivot objectと優位に関連するsize-kのモジュールを作成する。
-
-data fusion graph G=(V,R,T)
-
-* V ... nodes(ontology term, gene, disease, pathway, chemicalなど)
-* R ... edge(データ・セット。行・列はそれぞれノード同士の関係を表す。)
-* T
-
----
-
-# Collective Matrix factorization
-
-G = (V,R,T)を引数に取り、圧縮された推測された潜在空間モデルの行列を出力する
-行列Rとともにco-factrizationを行うことで達成する。Tはモデルの正則化のために利用する。
-
-以下を満たす手法を使う
-
-1. *related matrices*間の情報伝達が可能
-2. high-quality data compressionによるよい一般化(?)
-
-目標となる低次元マトリックスを$G^I, I \in V$と$S^{I,J}, I,J \in V$すると最小化すべき関数は
-
-$$
-(1)
-$$
-
-となる。
-
-パラメータは...
-より詳しくはData Fusion by ... を参照
+1. 全部行列に直す(前処理)
+2. 関連付ける
+3. collective matrix factorization(ここまで先行研究)
+4. <font color="red">Medusa</font>
 
 
 ---
 
-# Data fusion by Matrix factorization
+ここまでの問題点 ...  チェインを長くするとノイズが増す
 
-fusion dataからのデータマイニング手法は大きく3段階で発展してきた.
+↓ どのようにして補正する？
 
-1. 単一の特徴量行列にマージし、なんでも良いのでよく使われる手法を適用する。modular structureを無視, 特徴量生成の方法に大きく依存し、domain specificな知識が要求される。
-2. *late decision integraion*それぞれの情報源を元に、それぞれ独立にモデルを生成し、マージする。
-3. *intermediate (partial) integration* なんかすごい。
+複数のチェインを統合して検出力を上げる
 
-DFMF(Data Fusion Matrix Factorization)の説明をして、その後にその他の関連学習の手法を説明し、最後にカーネル法の説明をする。その後に他の手法との比較をする。特にtri-SPMFと比較する。
+↓ 問題は
+
+2頂点間に複数のチェインがあった場合、それらを統合して考えるのはナンセンス。
+
+↓ なぜかというと
+
+それぞれのチェインはそれぞれ違った基準での距離を表しているため
+
+↓ 解決策
+
+Pivot Object(ポジコン)を用いて、似ているオブジェクトの組を見つける
+
+> つまり ... 病気Aと関連があるとわかっている遺伝子`\(b_1, b_2, ... b_n\)`
+
+> から新たな関連遺伝子群`\(b_{n+1}... b_{m}\)`を検出する。
+
 
 ---
 
-<img src="images/data_integration_strategies.png">
+# Medusa
+
+1. `\(b_1, ..., b_n\)`と、`\(a_1, ... ,a_n\)`
 
 ---
 
-## DFMF
+# 違う型のオブジェクトどうしでもできる
 
-r個のオブジェクトタイプ$\sigma_1, ... \sigma_r$を考える。これには例えば患者とか病気とかが入る。
+例: 病気Aと関連のある遺伝子群を持っていて、それに似た遺伝子群をひっぱってきたい
 
-$\sigma_i$のオブジェクトが$n_i$個あり、jも同様とする。iとjを関連付ける観測行列(スパース)を$R_ij \in \R^{n_i * n_j}$とする。$\sigma_i$に属するデータ同士の関連をconstraint matrixとして表現する。これにはSNSデータやDrugインタラクションが含まれる。
+※: 自分の興味のある基準でひっぱってこれるのがミソ(多分)
+
+詳しくは論文を
 
 ---
 
-# submodular funcion and optimization
+# ポジコンで検証 -> 検出力向上
 
-計算の最後の段階らしい。優位な関連のあるオブジェクトの組(サブモジュール)を抜き出すのに使うっぽい。例えばKrauseの論文を参照。
+<img src="images/posicon.jpg", width="600", height="460">
 
-n個のオブジェクトVとvaluation function $f: 2^V -> R\_+$を想定する非負値の値を返す。
+---
+
+# なぜISMBに通ったか
+
+
+* <font size="8">使えそう(需要が多そう)だから</font>
+* <font size="8">関数型言語みたいで美しいから</font>
+* <font size="8">今までの集大成感があるから</font>
+
+
+---
+
+# refs
+
+http://helikoid.si/A8BFDCC6-8297-40AE-A9B4-59AA6983BF33/FinalDownload/DownloadId-FD86820B5866BD37D790F1FF903773BF/A8BFDCC6-8297-40AE-A9B4-59AA6983BF33/bc215/bc2-handouts.pdf
+
+http://eprints.fri.uni-lj.si/2862/1/2014-ZitnikZupan-IEEE-TPAMI.pdf
+
